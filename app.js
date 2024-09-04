@@ -75,14 +75,22 @@ function convertNewLinesAndBold(text) {
 // Function to create the article on Shopify
 async function createArticleOnShopify(title, content) {
     const completion = await openai.chat.completions.create({
-        messages: [{ role: "user", content: `Improve and optimize the user's question to create a concise and SEO-friendly blog post title. Keep the title as a question. keep it in the same language. If the question is too long for the meta title, shorten it while retaining key information. Return only the adjusted title without quotes, as your response will be used directly as the blog post title. Here is the user question: ${title}` }],
+        messages: [{ role: "user", content: `Improve and optimize the user's question to create a concise and SEO-friendly blog post title. Keep the title as a question. keep it in the same language. If the question is too long for the meta title, shorten on a MAXIMUM OF 50 characters it while retaining key information. Return only the adjusted title without quotes, as your response will be used directly as the blog post title. Here is the user question: ${title}` }],
         model: "gpt-4o",
       });
     
       console.log('adjustedTitle', completion.choices[0].message.content);
     let adjustedTitle = completion.choices[0].message.content;
+    const meta = await openai.chat.completions.create({
+        messages: [{ role: "user", content: `generate a short meta description - no more than 250 character - of a blog article about this content: ${content}` }],
+        model: "gpt-4o",
+      });
+    
+      console.log('metaDescription', meta.choices[0].message.content);
+    let metaDescription = meta.choices[0].message.content;
   // Convert new lines in content to <br> for HTML
   const htmlContent = convertNewLinesAndBold(content);
+  const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
     // Article data
     const articleData = {
       article: {
@@ -90,7 +98,7 @@ async function createArticleOnShopify(title, content) {
         title: `${adjustedTitle} - De Afspraakplanners`,
         author: 'Mitchel Blok',
         body_html: htmlContent,
-        summary_html: htmlContent,
+        summary_html: htmlmetaDescription,
         published_at: new Date().toISOString()
       },
     };
