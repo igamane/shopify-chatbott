@@ -110,7 +110,7 @@ async function createArticleOnShopify(title, content) {
         metafields: [
             {
               key: 'description_tag',
-              value: metaDescription,  // Use the same meta description generated earlier
+              value: htmlmetaDescription,  // Use the same meta description generated earlier
               value_type: 'string',
               namespace: 'global',
             }
