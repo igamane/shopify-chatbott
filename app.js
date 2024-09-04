@@ -87,7 +87,7 @@ async function createArticleOnShopify(title, content) {
     const articleData = {
       article: {
         blog_id: BLOG_ID,
-        title: `${adjustedTitle} - Afspraakplanners`,
+        title: `${adjustedTitle} - De Afspraakplanners`,
         author: 'Mitchel Blok',
         body_html: htmlContent,
         summary_html: htmlContent,
