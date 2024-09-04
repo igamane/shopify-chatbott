@@ -65,7 +65,7 @@ function convertNewLinesAndBold(text) {
     const pattern = /【\d+(?::\d+)?†source】/g;
     text = text.replace(pattern, '');
     // Convert text after any #, ##, or ### to bold and remove the #
-    text = text.replace(/#+\s*(.*?)\n/g, '<strong>$1</strong>\n');
+    text = text.replace(/#+\s*(.*?)\s*(<br>|$)/g, '<strong>$1</strong><br>');
     // Convert Markdown links to HTML links that open in a new window
     text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
