@@ -106,7 +106,15 @@ async function createArticleOnShopify(title, content) {
         author: 'Mitchel Blok',
         body_html: htmlContent,
         summary_html: htmlmetaDescription,
-        published_at: new Date().toISOString()
+        published_at: new Date().toISOString(),
+        metafields: [
+            {
+              key: 'description_tag',
+              value: metaDescription,  // Use the same meta description generated earlier
+              value_type: 'string',
+              namespace: 'global',
+            }
+          ]
       },
     };
 
