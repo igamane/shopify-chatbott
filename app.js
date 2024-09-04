@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const OpenAI = require("openai");
-
+ 
 const app = express();
 
 const SHOP_URL = process.env.SHOP_URL;
