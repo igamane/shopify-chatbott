@@ -55,10 +55,17 @@ const tools = [
         }
     }
 ];
+function wrapParagraphs(text) {
+    // Wrap paragraphs within <p> tags
+    return text
+        .split(/\n{2,}/) // Split text into paragraphs (double new lines as separator)
+        .map(paragraph => `<p>${paragraph.trim()}</p>`)
+        .join(''); // Rejoin paragraphs with no extra spacing
+}
 
 function convertNewLinesAndBold(text) {
-    // Replace new lines with <br>
-    text = text.replace(/\n/g, '<br>');
+    // Wrap text in <p> tags first
+    text = wrapParagraphs(text);
     // Replace **text** with <strong>text</strong> for bold
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Remove citation patterns like 【number†source】
