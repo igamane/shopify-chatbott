@@ -38,7 +38,7 @@ const tools = [
         "type": "function",
         "function": {
             "name": "isValidQuestion",
-            "description": "Use this function to determine if the user's message is a question. If the message is a question, return 'true'; if it is a statement, greeting, or irrelevant message, return 'false'.",
+            "description": "Use this function to determine if the user's message is a question. If the message is a question, return 'true' - examples like (give me) (explain) (provide) are also considered valid questions; if it is a statement, greeting, or irrelevant message, return 'false'.",
             "parameters": {
                 "type": "object",
                 "properties": {
