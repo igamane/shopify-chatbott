@@ -58,7 +58,7 @@ const tools = [
 
 function convertNewLinesAndBold(text) {
     // Replace new lines with <br>
-    let text = text.replace(/\n/g, '<br>');
+    text = text.replace(/\n/g, '<br>');
     // Replace **text** with <strong>text</strong> for bold
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Remove citation patterns like 【number†source】
