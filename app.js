@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const OpenAI = require("openai");
- 
+
 const app = express();
 
 const SHOP_URL = process.env.SHOP_URL;
@@ -56,9 +56,9 @@ const tools = [
     }
 ];
 function wrapParagraphs(text) {
-    // Wrap paragraphs within <p> tags
+    // Wrap paragraphs within <p> tags, using a single new line as the separator
     return text
-        .split(/\n{2,}/) // Split text into paragraphs (double new lines as separator)
+        .split(/\n+/) // Split text into paragraphs (single new line as separator)
         .map(paragraph => `<p>${paragraph.trim()}</p>`)
         .join(''); // Rejoin paragraphs with no extra spacing
 }
@@ -66,18 +66,26 @@ function wrapParagraphs(text) {
 function convertNewLinesAndBold(text) {
     // Wrap text in <p> tags first
     text = wrapParagraphs(text);
+    
     // Replace **text** with <strong>text</strong> for bold
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
     // Remove citation patterns like 【number†source】
     const pattern = /【\d+(?::\d+)?†source】/g;
     text = text.replace(pattern, '');
-    // Convert text after any #, ##, or ### to bold and remove the #
-    text = text.replace(/#+\s*(.*?)\s*(<br>|$)/g, '<strong>$1</strong><br>');
+
+    // Convert Markdown headers (###, ##, #) to bold
+    text = text.replace(/(#+)\s*(.*?)(<\/p>|$)/g, (match, hashes, content) => {
+        const level = hashes.length; // Determine the header level
+        return `<strong>${content.trim()}</strong></p>`;
+    });
+
     // Convert Markdown links to HTML links that open in a new window
     text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
     return text;
 }
+
 
 // Function to create the article on Shopify
 async function createArticleOnShopify(title, content) {
@@ -155,8 +163,8 @@ async function isValidQuestion(isValid, userMessage, AIResponse) {
 }
 
 app.post("/chat", async (req, res) => {
+    console.log(req.body);
     const assistantId = process.env.ASSISTANT_ID;
-    console.log('threadTimeouts: ', threadTimeouts);
     const { message } = req.body;
 
   const thread = await openai.beta.threads.create();
