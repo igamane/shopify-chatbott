@@ -109,11 +109,11 @@ async function createArticleOnShopify(title, content) {
         published_at: new Date().toISOString(),
         metafields: [
             {
-              key: 'description_tag',
-              value: htmlmetaDescription,  // Use the same meta description generated earlier
-              value_type: 'string',
-              namespace: 'global',
-            }
+        key: 'description_tag',
+        value: metaDescription,  // Use the same meta description generated earlier
+        type: 'single_line_text_field',  // Define the metafield type
+        namespace: 'global',
+      }
           ]
       },
     };
