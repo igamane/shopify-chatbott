@@ -58,18 +58,24 @@ const tools = [
 
 function convertNewLinesAndBold(text) {
     // Replace new lines with <br>
-    let formattedText = text.replace(/\n/g, '<br>');
-
+    let text = text.replace(/\n/g, '<br>');
     // Replace **text** with <strong>text</strong> for bold
-    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Remove citation patterns like 【number†source】
+    const pattern = /【\d+(?::\d+)?†source】/g;
+    text = text.replace(pattern, '');
+    // Convert text after any #, ##, or ### to bold and remove the #
+    text = text.replace(/#+\s*(.*?)\n/g, '<strong>$1</strong>\n');
+    // Convert Markdown links to HTML links that open in a new window
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
-    return formattedText;
+    return text;
 }
 
 // Function to create the article on Shopify
 async function createArticleOnShopify(title, content) {
     const completion = await openai.chat.completions.create({
-        messages: [{ role: "user", content: `Improve and optimize the user's question to create a concise and SEO-friendly blog post title. Keep the title as a question. If the question is too long for the meta title, shorten it while retaining key information. Return only the adjusted title without quotes, as your response will be used directly as the blog post title. Here is the user question: ${title}` }],
+        messages: [{ role: "user", content: `Improve and optimize the user's question to create a concise and SEO-friendly blog post title. Keep the title as a question. keep it in the same language. If the question is too long for the meta title, shorten it while retaining key information. Return only the adjusted title without quotes, as your response will be used directly as the blog post title. Here is the user question: ${title}` }],
         model: "gpt-4o",
       });
     
@@ -81,7 +87,7 @@ async function createArticleOnShopify(title, content) {
     const articleData = {
       article: {
         blog_id: BLOG_ID,
-        title: adjustedTitle,
+        title: `${adjustedTitle} - Afspraakplanners`,
         author: 'Mitchel Blok',
         body_html: htmlContent,
         summary_html: htmlContent,
