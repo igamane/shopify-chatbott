@@ -45,7 +45,7 @@ const tools = [
                     "isValid": {
                         "type": "string",
                         "enum": ["true", "false"],
-                        "description": "'true' if the message is a valid question; otherwise 'false' (all lowercase)."
+                        "description": "'true' if the message is a question; otherwise 'false' if its a statement or greeting (all lowercase)."
                     }
                 },
                 "required": [
@@ -159,7 +159,7 @@ app.post("/chat", async (req, res) => {
         let messages2 = [
             {
                 "role": "user",
-                "content": `is this user message a question ${message} - use (isValidQuestion) function to state if its a question or not`
+                "content": `is this user message a question ${message} - use (isValidQuestion) function to state if its a question or not - examples like (give me) (explain) (provide) are also considered valid questions`
             }
         ];
 
