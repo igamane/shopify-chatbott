@@ -14,6 +14,9 @@ const openai = new OpenAI({
 });
 
 app.use(cors());
+app.use(express.json({
+    strict: true,  // Enable strict parsing of JSON to catch errors
+}));
 
 const threadTimeouts = {};
 
