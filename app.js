@@ -25,7 +25,9 @@ app.get("/", async (req, res) => {
 
 app.get("/start", async (req, res) => {
     try {
+        console.log('/start received');
         const thread = await openai.beta.threads.create();
+        console.log('thread returned');
         res.json({ thread_id: thread.id });
     } catch (error) {
         console.error("Error creating thread:", error);
@@ -163,6 +165,7 @@ async function isValidQuestion(isValid, userMessage, AIResponse) {
 }
 
 app.post("/chat", async (req, res) => {
+    console.log('/chat received');
     console.log(req.body);
     const assistantId = process.env.ASSISTANT_ID;
     const { message } = req.body;
