@@ -171,19 +171,8 @@ app.post("/chat", (req, res) => {
 
     req.on('end', async () => {
         try {
-            // Escape problematic characters before parsing
-            rawBody = rawBody.replace(/[\n\r\t]/g, (char) => {
-                switch (char) {
-                    case '\n':
-                        return '\\n';  // Escape newline
-                    case '\r':
-                        return '\\r';  // Escape carriage return
-                    case '\t':
-                        return '\\t';  // Escape tab
-                    default:
-                        return char;
-                }
-            });
+            // Remove any invalid control characters without affecting valid JSON structure
+            rawBody = rawBody.replace(/[\u0000-\u0019]+/g, '');
 
             // Try to parse the sanitized body as JSON
             const parsedBody = JSON.parse(rawBody);
@@ -257,6 +246,7 @@ app.post("/chat", (req, res) => {
         res.status(400).json({ error: 'Request error' });
     });
 });
+
 
 
 port = 8080;
