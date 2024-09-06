@@ -163,7 +163,7 @@ async function isValidQuestion(isValid, userMessage, AIResponse) {
 app.post("/chat", (req, res) => {
     console.log('/chat received');
 
-    // Manually parse the incoming request body
+    // Manually collect the raw request body
     let rawBody = '';
     req.on('data', chunk => {
         rawBody += chunk.toString();
@@ -171,7 +171,21 @@ app.post("/chat", (req, res) => {
 
     req.on('end', async () => {
         try {
-            // Try to parse the body as JSON
+            // Escape problematic characters before parsing
+            rawBody = rawBody.replace(/[\n\r\t]/g, (char) => {
+                switch (char) {
+                    case '\n':
+                        return '\\n';  // Escape newline
+                    case '\r':
+                        return '\\r';  // Escape carriage return
+                    case '\t':
+                        return '\\t';  // Escape tab
+                    default:
+                        return char;
+                }
+            });
+
+            // Try to parse the sanitized body as JSON
             const parsedBody = JSON.parse(rawBody);
             const { message } = parsedBody;
 
@@ -243,6 +257,7 @@ app.post("/chat", (req, res) => {
         res.status(400).json({ error: 'Request error' });
     });
 });
+
 
 port = 8080;
 
