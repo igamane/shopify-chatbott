@@ -15,44 +15,52 @@ const openai = new OpenAI({
 });
 
 app.use(cors());
-// Middleware to capture and sanitize the raw request body
+// Middleware to capture raw request body and sanitize it
 app.use((req, res, next) => {
     let rawBody = '';
 
-    // Listen for data in the request body
+    // Accumulate chunks of data
     req.on('data', chunk => {
         rawBody += chunk.toString();
     });
 
-    // Once the request has ended, sanitize the body and proceed
+    // Once the request has ended, sanitize and parse it
     req.on('end', () => {
         try {
-            // Escape problematic characters like newlines, carriage returns, tabs
-            rawBody = rawBody.replace(/[\n\r\t]/g, (char) => {
-                switch (char) {
-                    case '\n':
-                        return '\\n';
-                    case '\r':
-                        return '\\r';
-                    case '\t':
-                        return '\\t';
-                    default:
-                        return char;
-                }
-            });
+            // Only sanitize if the body is non-empty
+            if (rawBody.trim()) {
+                // Escape problematic characters like newlines, carriage returns, tabs
+                rawBody = rawBody.replace(/[\n\r\t]/g, (char) => {
+                    switch (char) {
+                        case '\n':
+                            return '\\n';
+                        case '\r':
+                            return '\\r';
+                        case '\t':
+                            return '\\t';
+                        default:
+                            return char;
+                    }
+                });
 
-            // Assign the sanitized body back to the request
-            req.body = JSON.parse(rawBody);
-            next(); // Continue to the next middleware/route handler
+                // Manually assign the sanitized body back to req.rawBody for reference
+                req.rawBody = rawBody;
+            }
+            next(); // Continue to the next middleware
         } catch (error) {
-            // Handle JSON parsing errors here
-            console.error('Error parsing or sanitizing request body:', error.message);
+            console.error('Error sanitizing request body:', error.message);
             res.status(400).json({ error: 'Invalid JSON payload' });
         }
     });
+
+    // Handle request errors (e.g., large request bodies, timeouts)
+    req.on('error', (err) => {
+        console.error('Request error:', err.message);
+        res.status(400).json({ error: 'Invalid request' });
+    });
 });
 
-// Use bodyParser after custom middleware to handle JSON parsing
+// Use body-parser after sanitization middleware to parse JSON
 app.use(bodyParser.json());
 
 const threadTimeouts = {};
