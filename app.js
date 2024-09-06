@@ -36,14 +36,14 @@ const tools = [
         "type": "function",
         "function": {
             "name": "isValidQuestion",
-            "description": "Use this function to determine if the user's message is a question. If the message is a question, return 'true' - examples like (give me) (explain) (provide) are also considered valid questions; if it is a statement, greeting, or irrelevant message, return 'false'.",
+            "description": "Use this function to determine if the user's message is a question/statement. If the message is a question/statement, return 'true' - examples like (give me) (explain) (provide) are also considered valid questions; if it is a greeting, or irrelevant message, return 'false'.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "isValid": {
                         "type": "string",
                         "enum": ["true", "false"],
-                        "description": "'true' if the message is a question; otherwise 'false' if its a statement or greeting (all lowercase)."
+                        "description": "'true' if the message is a question/statement; otherwise 'false' if its a greeting or irrelevant message (all lowercase)."
                     }
                 },
                 "required": [
@@ -205,7 +205,7 @@ app.post("/chat", (req, res) => {
             let messages2 = [
                 {
                     "role": "user",
-                    "content": `is this user message a question ${message} - use (isValidQuestion) function to state if its a question or not - examples like (give me) (explain) (provide) are also considered valid questions`
+                    "content": `is this user message a question/statement: ${message} - use (isValidQuestion) function to state if its a question/statement or not - examples like (give me) (explain) (provide) are also considered valid questions - only decline weird messages or greetings or irrelevant message`
                 }
             ];
 
