@@ -1,7 +1,6 @@
 require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const OpenAI = require("openai");
 
 const app = express();
@@ -15,55 +14,6 @@ const openai = new OpenAI({
 });
 
 app.use(cors());
-// Middleware to capture raw request body and sanitize it
-app.use((req, res, next) => {
-    let rawBody = '';
-
-    // Accumulate chunks of data
-    req.on('data', chunk => {
-        rawBody += chunk.toString();
-    });
-
-    // Once the request has ended, sanitize and parse it
-    req.on('end', () => {
-        try {
-            // Only sanitize if the body is non-empty
-            if (rawBody.trim()) {
-                // Escape problematic characters like newlines, carriage returns, tabs
-                rawBody = rawBody.replace(/[\n\r\t]/g, (char) => {
-                    switch (char) {
-                        case '\n':
-                            return '\\n';
-                        case '\r':
-                            return '\\r';
-                        case '\t':
-                            return '\\t';
-                        default:
-                            return char;
-                    }
-                });
-
-                // Manually assign the sanitized body back to req.rawBody for reference
-                req.rawBody = rawBody;
-            }
-            next(); // Continue to the next middleware
-        } catch (error) {
-            console.error('Error sanitizing request body:', error.message);
-            res.status(400).json({ error: 'Invalid JSON payload' });
-        }
-    });
-
-    // Handle request errors (e.g., large request bodies, timeouts)
-    req.on('error', (err) => {
-        console.error('Request error:', err.message);
-        res.status(400).json({ error: 'Invalid request' });
-    });
-});
-
-// Use body-parser after sanitization middleware to parse JSON
-app.use(bodyParser.json());
-
-const threadTimeouts = {};
 
 app.get("/", async (req, res) => {
     res.send('working...');
@@ -210,67 +160,88 @@ async function isValidQuestion(isValid, userMessage, AIResponse) {
     }
 }
 
-app.post("/chat", async (req, res) => {
+app.post("/chat", (req, res) => {
     console.log('/chat received');
-    console.log('Sanitized request body:', req.body);
-    const assistantId = process.env.ASSISTANT_ID;
-    const { message } = req.body;
 
-  const thread = await openai.beta.threads.create();
-  const threadId = thread.id;
+    // Manually parse the incoming request body
+    let rawBody = '';
+    req.on('data', chunk => {
+        rawBody += chunk.toString();
+    });
 
+    req.on('end', async () => {
+        try {
+            // Try to parse the body as JSON
+            const parsedBody = JSON.parse(rawBody);
+            const { message } = parsedBody;
 
-    try {
-        console.log(`Received message: ${message} for thread ID: ${threadId}`);
-        await openai.beta.threads.messages.create(threadId, {
-            role: "user",
-            content: message,
-        });
-
-        const run = await openai.beta.threads.runs.createAndPoll(threadId, {
-            assistant_id: assistantId,
-        });
-
-        const messages = await openai.beta.threads.messages.list(run.thread_id);
-        const response = messages.data[0].content[0].text.value;
-
-        console.log('Assistant response: ', response);
-
-        let messages2 = [
-            {
-                "role": "user",
-                "content": `is this user message a question ${message} - use (isValidQuestion) function to state if its a question or not - examples like (give me) (explain) (provide) are also considered valid questions`
+            if (!message) {
+                return res.status(400).json({ error: 'No message received' });
             }
-        ];
 
-        const checkValidity = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: messages2,
-            tools: tools,
-            tool_choice: { "type": "function", "function": { "name": "isValidQuestion" } },
-        });
+            console.log(`Received message: ${message}`);
 
-        const responseMessage = checkValidity.choices[0].message;
+            // Proceed with your OpenAI logic
+            const thread = await openai.beta.threads.create();
+            const threadId = thread.id;
 
-        const toolCalls = responseMessage.tool_calls;
-        if (responseMessage.tool_calls) {
-            const availableFunctions = {
-                isValidQuestion: (args) => isValidQuestion(args, message, response),
-            };
-            for (const toolCall of toolCalls) {
-                const functionName = toolCall.function.name;
-                const functionToCall = availableFunctions[functionName];
-                const functionArgs = JSON.parse(toolCall.function.arguments);
-                console.log('functionArgs ', functionArgs)
-                await functionToCall(functionArgs.isValid);
+            await openai.beta.threads.messages.create(threadId, {
+                role: "user",
+                content: message,
+            });
+
+            const run = await openai.beta.threads.runs.createAndPoll(threadId, {
+                assistant_id: process.env.ASSISTANT_ID,
+            });
+
+            const messages = await openai.beta.threads.messages.list(run.thread_id);
+            const response = messages.data[0].content[0].text.value;
+
+            console.log('Assistant response: ', response);
+
+            let messages2 = [
+                {
+                    "role": "user",
+                    "content": `is this user message a question ${message} - use (isValidQuestion) function to state if its a question or not - examples like (give me) (explain) (provide) are also considered valid questions`
+                }
+            ];
+
+            const checkValidity = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: messages2,
+                tools: tools,
+                tool_choice: { "type": "function", "function": { "name": "isValidQuestion" } },
+            });
+
+            const responseMessage = checkValidity.choices[0].message;
+
+            const toolCalls = responseMessage.tool_calls;
+            if (responseMessage.tool_calls) {
+                const availableFunctions = {
+                    isValidQuestion: (args) => isValidQuestion(args, message, response),
+                };
+                for (const toolCall of toolCalls) {
+                    const functionName = toolCall.function.name;
+                    const functionToCall = availableFunctions[functionName];
+                    const functionArgs = JSON.parse(toolCall.function.arguments);
+                    console.log('functionArgs ', functionArgs)
+                    await functionToCall(functionArgs.isValid);
+                }
             }
+
+            res.json({ response });
+
+        } catch (error) {
+            console.error('Error parsing or handling chat:', error.message);
+            res.status(400).json({ error: 'Invalid JSON input' });
         }
+    });
 
-        res.json({ response });
-    } catch (error) {
-        console.error("Error handling chat:", error);
-        res.status(500).json({ error: "Failed to process chat" });
-    }
+    // Handle request errors
+    req.on('error', (err) => {
+        console.error('Request error:', err.message);
+        res.status(400).json({ error: 'Request error' });
+    });
 });
 
 port = 8080;
