@@ -1,7 +1,6 @@
 require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const OpenAI = require("openai");
 
 const app = express();
@@ -15,7 +14,6 @@ const openai = new OpenAI({
 });
 
 app.use(cors());
-app.use(bodyParser.json());
 
 const threadTimeouts = {};
 
