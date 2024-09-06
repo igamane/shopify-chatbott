@@ -1,6 +1,7 @@
 require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const cors = require("cors");
+const bodyParser = require("body-parser");
 const OpenAI = require("openai");
 
 const app = express();
@@ -14,9 +15,45 @@ const openai = new OpenAI({
 });
 
 app.use(cors());
-app.use(express.json({
-    strict: true,  // Enable strict parsing of JSON to catch errors
-}));
+// Middleware to capture and sanitize the raw request body
+app.use((req, res, next) => {
+    let rawBody = '';
+
+    // Listen for data in the request body
+    req.on('data', chunk => {
+        rawBody += chunk.toString();
+    });
+
+    // Once the request has ended, sanitize the body and proceed
+    req.on('end', () => {
+        try {
+            // Escape problematic characters like newlines, carriage returns, tabs
+            rawBody = rawBody.replace(/[\n\r\t]/g, (char) => {
+                switch (char) {
+                    case '\n':
+                        return '\\n';
+                    case '\r':
+                        return '\\r';
+                    case '\t':
+                        return '\\t';
+                    default:
+                        return char;
+                }
+            });
+
+            // Assign the sanitized body back to the request
+            req.body = JSON.parse(rawBody);
+            next(); // Continue to the next middleware/route handler
+        } catch (error) {
+            // Handle JSON parsing errors here
+            console.error('Error parsing or sanitizing request body:', error.message);
+            res.status(400).json({ error: 'Invalid JSON payload' });
+        }
+    });
+});
+
+// Use bodyParser after custom middleware to handle JSON parsing
+app.use(bodyParser.json());
 
 const threadTimeouts = {};
 
@@ -167,7 +204,7 @@ async function isValidQuestion(isValid, userMessage, AIResponse) {
 
 app.post("/chat", async (req, res) => {
     console.log('/chat received');
-    console.log(req.body);
+    console.log('Sanitized request body:', req.body);
     const assistantId = process.env.ASSISTANT_ID;
     const { message } = req.body;
 
