@@ -241,6 +241,9 @@ app.post("/chat", (req, res) => {
                         await functionToCall(functionArgs.isValid);
                     }
                 }
+
+                // Add the response to the array
+                responses.push(responseMessage);
             }
 
             console.log('All responses:', responses);
