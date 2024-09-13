@@ -172,8 +172,12 @@ app.post("/chat", (req, res) => {
     req.on('end', async () => {
         try {
             // Remove any invalid control characters without affecting valid JSON structure
-            rawBody = rawBody.replace(/[\u0000-\u0019]+/g, '');
-
+            // Use a regular expression to only replace control characters within string values (inside quotes)
+            rawBody = rawBody.replace(/"(.*?)"/g, (match, p1) => {
+                // Replace control characters within the string (inside quotes)
+                const sanitizedString = p1.replace(/[\u0000-\u0019]+/g, '-n-');
+                return `"${sanitizedString}"`;
+            });
             // Try to parse the sanitized body as JSON
             const parsedBody = JSON.parse(rawBody);
             const { message } = parsedBody;
