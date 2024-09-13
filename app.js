@@ -172,24 +172,20 @@ app.post("/chat", (req, res) => {
     req.on('end', async () => {
         try {
             // Remove any invalid control characters without affecting valid JSON structure
-            // Use a regular expression to only replace control characters within string values (inside quotes)
-            rawBody = rawBody.replace(/"(.*?)"/g, (match, p1) => {
-                // Replace control characters within the string (inside quotes)
-                const sanitizedString = p1.replace(/[\u0000-\u0019]+/g, '-n-');
-                return `"${sanitizedString}"`;
-            });
             // Try to parse the sanitized body as JSON
             const parsedBody = JSON.parse(rawBody);
             const { message } = parsedBody;
-
+            console.log(parsedBody);
             if (!message) {
                 return res.status(400).json({ error: 'No message received' });
             }
 
+            message = message.replace(/[\u0000-\u0019]+/g, '-n-');
+
             console.log(`Received message: ${message}`);
 
             // Split the message by new lines into an array of lines
-            const messageLines = message.split('\n').filter(line => line.trim() !== '');
+            const messageLines = message.split('-n-').filter(line => line.trim() !== '');
 
             // Initialize an array to hold the responses
             let responses = [];
