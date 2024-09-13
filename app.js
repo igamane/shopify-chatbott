@@ -243,7 +243,7 @@ app.post("/chat", (req, res) => {
                 }
 
                 // Add the response to the array
-                responses.push(responseMessage);
+                responses.push(response);
             }
 
             console.log('All responses:', responses);
