@@ -181,12 +181,12 @@ app.post("/chat", (req, res) => {
                 return res.status(400).json({ error: 'No message received' });
             }
 
-            message = message.replace(/[\u0000-\u0019]+/g, '-n-');
+            message = message.replace(/[\u0000-\u0019]+/g, '');
 
             console.log(`Received message: ${message}`);
 
             // Split the message by new lines into an array of lines
-            const messageLines = message.split('-n-').filter(line => line.trim() !== '');
+            const messageLines = message.split('-').filter(line => line.trim() !== '');
 
             // Initialize an array to hold the responses
             let responses = [];
