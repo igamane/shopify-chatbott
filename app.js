@@ -6,8 +6,8 @@ const OpenAI = require("openai");
 const app = express();
 
 const SHOP_URL = process.env.SHOP_URL;
-const BLOG_ID = process.env.BLOG_ID; 
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN; 
+const BLOG_ID = process.env.BLOG_ID;
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -64,10 +64,10 @@ function wrapParagraphs(text) {
 function convertNewLinesAndBold(text) {
     // Wrap text in <p> tags first
     text = wrapParagraphs(text);
-    
+
     // Replace **text** with <strong>text</strong> for bold
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
+
     // Remove citation patterns like 【number†source】
     const pattern = /【\d+(?::\d+)?†source】/g;
     text = text.replace(pattern, '');
@@ -90,38 +90,38 @@ async function createArticleOnShopify(title, content) {
     const completion = await openai.chat.completions.create({
         messages: [{ role: "user", content: `Improve and optimize the user's question to create a concise and SEO-friendly blog post title. Keep the title as a question. keep it in the same language. If the question is too long for the meta title, shorten on a MAXIMUM OF 50 characters it while retaining key information. Return only the adjusted title without quotes, as your response will be used directly as the blog post title. Here is the user question: ${title}` }],
         model: "gpt-4o",
-      });
-    
-      console.log('adjustedTitle', completion.choices[0].message.content);
+    });
+
+    console.log('adjustedTitle', completion.choices[0].message.content);
     let adjustedTitle = completion.choices[0].message.content;
     const meta = await openai.chat.completions.create({
         messages: [{ role: "user", content: `generate a short meta description - no more than 250 character - of a blog article about this content: ${content}` }],
         model: "gpt-4o",
-      });
-    
-      console.log('metaDescription', meta.choices[0].message.content);
+    });
+
+    console.log('metaDescription', meta.choices[0].message.content);
     let metaDescription = meta.choices[0].message.content;
-  // Convert new lines in content to <br> for HTML
-  const htmlContent = convertNewLinesAndBold(content);
-  const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
+    // Convert new lines in content to <br> for HTML
+    const htmlContent = convertNewLinesAndBold(content);
+    const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
     // Article data
     const articleData = {
-      article: {
-        blog_id: BLOG_ID,
-        title: `${adjustedTitle} - De Afspraakplanners`,
-        author: 'Mitchel Blok',
-        body_html: htmlContent,
-        summary_html: htmlmetaDescription,
-        published_at: new Date().toISOString(),
-        metafields: [
-            {
-        key: 'description_tag',
-        value: metaDescription,  // Use the same meta description generated earlier
-        type: 'single_line_text_field',  // Define the metafield type
-        namespace: 'global',
-      }
-          ]
-      },
+        article: {
+            blog_id: BLOG_ID,
+            title: `${adjustedTitle} - De Afspraakplanners`,
+            author: 'Mitchel Blok',
+            body_html: htmlContent,
+            summary_html: htmlmetaDescription,
+            published_at: new Date().toISOString(),
+            metafields: [
+                {
+                    key: 'description_tag',
+                    value: metaDescription,  // Use the same meta description generated earlier
+                    type: 'single_line_text_field',  // Define the metafield type
+                    namespace: 'global',
+                }
+            ]
+        },
     };
 
     // API endpoint for creating an article
@@ -130,28 +130,28 @@ async function createArticleOnShopify(title, content) {
 
     // Headers for the request
     const headers = {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': ACCESS_TOKEN,
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': ACCESS_TOKEN,
     };
 
     try {
-      const response = await fetch(createArticleUrl, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(articleData),
-      });
+        const response = await fetch(createArticleUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(articleData),
+        });
 
-      const responseData = await response.json();
-      if (response.status === 201) {
-        console.log('Article created successfully on Shopify.');
-      } else {
-        console.log('Failed to create article on Shopify.');
-        console.log('Error:', responseData);
-      }
+        const responseData = await response.json();
+        if (response.status === 201) {
+            console.log('Article created successfully on Shopify.');
+        } else {
+            console.log('Failed to create article on Shopify.');
+            console.log('Error:', responseData);
+        }
     } catch (error) {
-      console.error('Error creating article on Shopify:', error.message);
+        console.error('Error creating article on Shopify:', error.message);
     }
-  }
+}
 
 async function isValidQuestion(isValid, userMessage, AIResponse) {
     console.log('isValid ', isValid);
@@ -184,62 +184,69 @@ app.post("/chat", (req, res) => {
 
             console.log(`Received message: ${message}`);
 
-            // Proceed with your OpenAI logic
-            const thread = await openai.beta.threads.create();
-            const threadId = thread.id;
+            // Split the message by new lines into an array of lines
+            const messageLines = message.split('\n').filter(line => line.trim() !== '');
 
-            await openai.beta.threads.messages.create(threadId, {
-                role: "user",
-                content: message,
-            });
+            // Initialize an array to hold the responses
+            let responses = [];
 
-            const run = await openai.beta.threads.runs.createAndPoll(threadId, {
-                assistant_id: process.env.ASSISTANT_ID,
-            });
+            // Loop over each line and send a separate request to OpenAI for each
+            for (let line of messageLines) {
+                console.log(`Processing line: ${line}`);
 
-            const messages = await openai.beta.threads.messages.list(run.thread_id);
-            const response = messages.data[0].content[0].text.value;
+                // Proceed with your OpenAI logic
+                const thread = await openai.beta.threads.create();
+                const threadId = thread.id;
 
-            console.log('Assistant response: ', response);
+                await openai.beta.threads.messages.create(threadId, {
+                    role: "user",
+                    content: line,
+                });
 
-            let messages2 = [
-                {
-                    "role": "user",
-                    "content": `is this user message a question/statement: ${message} - use (isValidQuestion) function to state if its a question/statement or not - examples like (give me) (explain) (provide) are also considered valid questions - only decline weird messages or greetings or irrelevant message`
-                }
-            ];
+                const run = await openai.beta.threads.runs.createAndPoll(threadId, {
+                    assistant_id: process.env.ASSISTANT_ID,
+                });
 
-            const checkValidity = await openai.chat.completions.create({
-                model: "gpt-4o",
-                messages: messages2,
-                tools: tools,
-                tool_choice: { "type": "function", "function": { "name": "isValidQuestion" } },
-            });
+                const messages = await openai.beta.threads.messages.list(run.thread_id);
+                const response = messages.data[0].content[0].text.value;
 
-            const responseMessage = checkValidity.choices[0].message;
+                console.log('Assistant response: ', response);
 
-            const toolCalls = responseMessage.tool_calls;
-            if (responseMessage.tool_calls) {
-                const availableFunctions = {
-                    isValidQuestion: (args) => isValidQuestion(args, message, response),
-                };
-                for (const toolCall of toolCalls) {
-                    const functionName = toolCall.function.name;
-                    const functionToCall = availableFunctions[functionName];
-                    const functionArgs = JSON.parse(toolCall.function.arguments);
-                    console.log('functionArgs ', functionArgs)
-                    await functionToCall(functionArgs.isValid);
+                let messages2 = [
+                    {
+                        "role": "user",
+                        "content": `is this user message a question/statement: ${line} - use (isValidQuestion) function to state if its a question/statement or not - examples like (give me) (explain) (provide) are also considered valid questions - only decline weird messages or greetings or irrelevant message`
+                    }
+                ];
+
+                const checkValidity = await openai.chat.completions.create({
+                    model: "gpt-4o",
+                    messages: messages2,
+                    tools: tools,
+                    tool_choice: { "type": "function", "function": { "name": "isValidQuestion" } },
+                });
+
+                const responseMessage = checkValidity.choices[0].message;
+
+                const toolCalls = responseMessage.tool_calls;
+                if (responseMessage.tool_calls) {
+                    const availableFunctions = {
+                        isValidQuestion: (args) => isValidQuestion(args, line, response),
+                    };
+                    for (const toolCall of toolCalls) {
+                        const functionName = toolCall.function.name;
+                        const functionToCall = availableFunctions[functionName];
+                        const functionArgs = JSON.parse(toolCall.function.arguments);
+                        console.log('functionArgs ', functionArgs)
+                        await functionToCall(functionArgs.isValid);
+                    }
                 }
             }
 
-            // Send multiple messages to Voiceflow
-            res.json({
-                messages: [
-                    { type: "text", content: response },
-                    { type: "text", content: "This is the first follow-up message." },
-                    { type: "text", content: "Here is some additional information." }
-                ]
-            });
+            console.log('All responses:', responses);
+
+            // Return all the responses in an array
+            res.json({ responses });
 
         } catch (error) {
             console.error('Error parsing or handling chat:', error.message);
@@ -261,4 +268,4 @@ port = 8080;
 app.listen(port, () => {
     console.log("Server running on port 8080");
 });
- 
+
