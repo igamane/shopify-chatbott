@@ -232,7 +232,14 @@ app.post("/chat", (req, res) => {
                 }
             }
 
-            res.json({ response });
+            // Send multiple messages to Voiceflow
+            res.json({
+                messages: [
+                    { type: "text", content: response },
+                    { type: "text", content: "This is the first follow-up message." },
+                    { type: "text", content: "Here is some additional information." }
+                ]
+            });
 
         } catch (error) {
             console.error('Error parsing or handling chat:', error.message);
