@@ -185,7 +185,7 @@ app.post("/chat", (req, res) => {
             console.log(`Received message: ${message}`);
 
             // Split the message by new lines into an array of lines
-            const messageLines = message.split('\n').filter(line => line.trim() !== '');
+            const messageLines = message.split('-n-').filter(line => line.trim() !== '');
 
             // Initialize an array to hold the responses
             let responses = [];
