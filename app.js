@@ -172,7 +172,7 @@ app.post("/chat", (req, res) => {
     req.on('end', async () => {
         try {
             // Remove any invalid control characters without affecting valid JSON structure
-            rawBody = rawBody.replace(/[^\S\n]+/g, ' ');  // Replace control characters, keeping newlines (\n) intact
+            rawBody = rawBody.replace(/[\u0000-\u0019]+/g, '-n-');
 
             // Try to parse the sanitized body as JSON
             const parsedBody = JSON.parse(rawBody);
