@@ -2,7 +2,7 @@ require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
-import { JSDOM } from 'jsdom';
+const { JSDOM } = require('jsdom');
 
 const app = express();
 
