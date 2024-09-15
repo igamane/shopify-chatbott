@@ -160,14 +160,14 @@ async function insertProductPromotion(htmlContent, blogTopic) {
                 position: 'AFTER_OUTLINE'
             });
             const image2 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt2 });
-            const imageUrl2 = image1.data[0].url;
+            const imageUrl2 = image2.data[0].url;
             products.push({
                 image: imageUrl2,
                 prompt: result_table.prompt2,
                 position: 'MIDDLE'
             });
             const image3 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt3 });
-            const imageUrl3 = image1.data[0].url;
+            const imageUrl3 = image3.data[0].url;
             products.push({
                 image: imageUrl3,
                 prompt: result_table.prompt3,
