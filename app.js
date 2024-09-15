@@ -225,7 +225,7 @@ async function createArticleOnShopify(title, content) {
     let metaDescription = meta.choices[0].message.content;
     // Convert new lines in content to <br> for HTML
     let htmlContent = convertNewLinesAndBold(content);
-    htmlContent = await insertProductPromotion(htmlContent);
+    htmlContent = await insertProductPromotion(htmlContent, metaDescription);
     const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
     metaDescription = metaDescription.replace(/\n/g, '');
     const image = await openai.images.generate({ model: "dall-e-3", prompt: `generate a featured image for an article with title: ${adjustedTitle}` });
