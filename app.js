@@ -98,7 +98,7 @@ async function insertProductPromotion(htmlContent, blogTopic) {
     let messages = [
         {
             "role": "user",
-            "content": `Generate three different text-to-image prompts based on the blog article topic: "${blogTopic}".\n\n Each prompt should start with "Generate an image" and should describe a completely unique and detailed visual concept that reflects the blog article's topic. Ensure each image prompt is distinct from the others, with a different style, perspective, and composition. The prompts should not explicitly mention the blog topic but should provide a clear visual direction for each image.`
+            "content": `Generate three different text-to-image prompts based on the blog article topic: "${blogTopic}".\n\n Each prompt should start with "Generate an image" and should describe a completely unique and detailed visual concept that reflects the blog article's topic. Ensure each image prompt is distinct from the others, with a different style, perspective, and composition.`
         }
     ];
 
