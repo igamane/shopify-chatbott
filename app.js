@@ -184,7 +184,7 @@ async function insertProductPromotion(htmlContent, blogTopic) {
 
         if (product.position === 'AFTER_OUTLINE') {
             // Insert after the first <ul> element
-            const firstULElement = document.querySelector('ul');
+            const firstULElement = document.querySelector('p');
             if (firstULElement) {
                 firstULElement.insertAdjacentHTML('afterend', clickableImage);
             }
