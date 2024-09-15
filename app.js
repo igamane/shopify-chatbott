@@ -2,6 +2,7 @@ require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
+import { JSDOM } from 'jsdom';
 
 const app = express();
 
@@ -374,8 +375,6 @@ app.post("/chat", (req, res) => {
                 // Add the response to the array
                 responses.push(response);
             }
-
-            console.log('All responses:', responses);
 
             // Return all the responses in an array
             res.json({ responses });
