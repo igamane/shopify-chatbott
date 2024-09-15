@@ -2,7 +2,7 @@ require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
 
 const app = express();
 
@@ -224,8 +224,8 @@ async function createArticleOnShopify(title, content) {
     console.log('metaDescription', meta.choices[0].message.content);
     let metaDescription = meta.choices[0].message.content;
     // Convert new lines in content to <br> for HTML
-    const htmlContent = convertNewLinesAndBold(content);
-    htmlContent = insertProductPromotion(htmlContent);
+    let htmlContent = convertNewLinesAndBold(content);
+    htmlContent = await insertProductPromotion(htmlContent);
     const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
     metaDescription = metaDescription.replace(/\n/g, '');
     const image = await openai.images.generate({ model: "dall-e-3", prompt: `generate a featured image for an article with title: ${adjustedTitle}` });
