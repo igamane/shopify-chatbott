@@ -228,6 +228,7 @@ async function createArticleOnShopify(title, content) {
     htmlContent = await insertProductPromotion(htmlContent, metaDescription);
     const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
     metaDescription = metaDescription.replace(/\n/g, '');
+    console.log(adjustedTitle);
     const image = await openai.images.generate({ model: "dall-e-3", prompt: `generate a featured image for an article with title: ${adjustedTitle}` });
     const imageUrl = image.data[0].url;
     // Article data
