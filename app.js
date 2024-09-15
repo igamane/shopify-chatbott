@@ -81,9 +81,130 @@ function convertNewLinesAndBold(text) {
     // Convert Markdown links to HTML links that open in a new window
     text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
+    // Remove sequences of hyphens (--) or more, and underscores (__) or more
+    text = text.replace(/-{2,}/g, '');  // Remove '--', '---', '----'...
+    text = text.replace(/_{2,}/g, '');  // Remove '__', '___', '____'...
+
     return text;
 }
 
+async function insertProductPromotion(htmlContent, blogTopic) {
+    const { window } = new JSDOM(htmlContent);
+    const { document } = window;
+
+    // Detect product data from environment variables
+    const products = [];
+    let messages = [
+        {
+            "role": "user",
+            "content": `Generate three different text-to-image prompts based on the blog article topic: "${blogTopic}".\n\n Each prompt should start with "Generate an image" and should describe a completely unique and detailed visual concept that reflects the blog article's topic. Ensure each image prompt is distinct from the others, with a different style, perspective, and composition. The prompts should not explicitly mention the blog topic but should provide a clear visual direction for each image.`
+        }
+    ];
+
+    const tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "generate_blog_article_images",
+                "description": "A function to generate three blog article images using a text-to-image AI model. Each image will be based on a specific prompt related to the blog topic provided.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt1": {
+                            "type": "string",
+                            "description": "The first detailed prompt to generate an image for the blog article starting by -generate an image ...-."
+                        },
+                        "prompt2": {
+                            "type": "string",
+                            "description": "The second detailed prompt to generate an image for the blog article starting by -generate an image ...-."
+                        },
+                        "prompt3": {
+                            "type": "string",
+                            "description": "The third detailed prompt to generate an image for the blog article starting by -generate an image ...-."
+                        }
+                    },
+                    "required": [
+                        "prompt1",
+                        "prompt2",
+                        "prompt3"
+                    ]
+                }
+            }
+        }
+
+    ];
+
+    const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: messages,
+        tools: tools,
+        tool_choice: { "type": "function", "function": { "name": "generate_blog_article_images" } },
+    });
+    const responseMessage = response.choices[0].message;
+
+    console.log(responseMessage);
+    let result_table;
+
+    const toolCalls = responseMessage.tool_calls;
+    if (responseMessage.tool_calls) {
+
+        for (const toolCall of toolCalls) {
+            result_table = JSON.parse(toolCall.function.arguments);
+            console.log(result_table);
+            const image1 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt1 });
+            const imageUrl1 = image1.data[0].url;
+            products.push({
+                image: imageUrl1,
+                prompt: result_table.prompt1,
+                position: 'AFTER_OUTLINE'
+            });
+            const image2 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt2 });
+            const imageUrl2 = image1.data[0].url;
+            products.push({
+                image: imageUrl2,
+                prompt: result_table.prompt2,
+                position: 'MIDDLE'
+            });
+            const image3 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt3 });
+            const imageUrl3 = image1.data[0].url;
+            products.push({
+                image: imageUrl3,
+                prompt: result_table.prompt3,
+                position: 'END'
+            });
+        }
+    }
+
+    // Insert product promotions into the appropriate locations
+    products.forEach(product => {
+        let productPrompt = product.prompt;
+        let adjustedProductPrompt = productPrompt.replace('generate ', '');
+        const clickableImage = `<img src="${product.image}" alt="${adjustedProductPrompt}" style="width:100%; height:auto;">`;
+
+        if (product.position === 'AFTER_OUTLINE') {
+            // Insert after the first <ul> element
+            const firstULElement = document.querySelector('ul');
+            if (firstULElement) {
+                firstULElement.insertAdjacentHTML('afterend', clickableImage);
+            }
+        } else if (product.position === 'MIDDLE') {
+            // Insert after the middle <p> element
+            const pElements = document.querySelectorAll('p');
+            const middleIndex = Math.floor(pElements.length / 2);
+            if (pElements[middleIndex]) {
+                pElements[middleIndex].insertAdjacentHTML('afterend', clickableImage);
+            }
+        } else if (product.position === 'END') {
+            // Insert at the end of the article
+            const lastElement = document.body.lastElementChild;
+            if (lastElement) {
+                lastElement.insertAdjacentHTML('afterend', clickableImage);
+            }
+        }
+    });
+
+    return document.documentElement.innerHTML;
+}
 
 // Function to create the article on Shopify
 async function createArticleOnShopify(title, content) {
@@ -103,7 +224,11 @@ async function createArticleOnShopify(title, content) {
     let metaDescription = meta.choices[0].message.content;
     // Convert new lines in content to <br> for HTML
     const htmlContent = convertNewLinesAndBold(content);
+    htmlContent = insertProductPromotion(htmlContent);
     const htmlmetaDescription = convertNewLinesAndBold(metaDescription);
+    metaDescription = metaDescription.replace(/\n/g, '');
+    const image = await openai.images.generate({ model: "dall-e-3", prompt: `generate a featured image for an article with title: ${adjustedTitle}` });
+    const imageUrl = image.data[0].url;
     // Article data
     const articleData = {
         article: {
@@ -120,7 +245,10 @@ async function createArticleOnShopify(title, content) {
                     type: 'single_line_text_field',  // Define the metafield type
                     namespace: 'global',
                 }
-            ]
+            ],
+            image: {
+                src: imageUrl // Include the image URL
+            }
         },
     };
 
@@ -186,7 +314,7 @@ app.post("/chat", (req, res) => {
             console.log(`Received message: ${message}`);
 
             // Split the message by new lines into an array of lines
-            const messageLines = message.split('--').filter(line => line.trim() !== '');
+            const messageLines = message.split(/(?<=\?)/).filter(line => line.trim() !== '');
 
             // Initialize an array to hold the responses
             let responses = [];
@@ -272,4 +400,3 @@ port = 8080;
 app.listen(port, () => {
     console.log("Server running on port 8080");
 });
-
