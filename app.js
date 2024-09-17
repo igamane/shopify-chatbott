@@ -3,6 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
 const { JSDOM } = require('jsdom');
+const { storage, cloudinary } = require('./cloudinary');
+const multer = require('multer');
+const upload = multer({ storage });
+const axios = require('axios'); // Needed to download the image before uploading to Cloudinary
+const stream = require('stream'); // Importing the 'stream' module
 
 const app = express();
 
@@ -98,7 +103,7 @@ async function insertProductPromotion(htmlContent, blogTopic) {
     let messages = [
         {
             "role": "user",
-            "content": `Generate three different text-to-image prompts based on the blog article topic: "${blogTopic}".\n\n Each prompt should start with "Generate an image" and should describe a completely unique and detailed visual concept that reflects the blog article's topic. Ensure each image prompt is distinct from the others, with a different style, perspective, and composition.`
+            "content": `Generate 4 different text-to-image prompts based on the blog article topic: "${blogTopic}".\n\n Each prompt should start with "Generate an image" and should describe a completely unique and detailed visual concept that reflects the blog article's topic. Ensure each image prompt is distinct from the others, with a different style, perspective, and composition.`
         }
     ];
 
@@ -107,7 +112,7 @@ async function insertProductPromotion(htmlContent, blogTopic) {
             "type": "function",
             "function": {
                 "name": "generate_blog_article_images",
-                "description": "A function to generate three blog article images using a text-to-image AI model. Each image will be based on a specific prompt related to the blog topic provided.",
+                "description": "A function to generate 4 blog article images using a text-to-image AI model. Each image will be based on a specific prompt related to the blog topic provided.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -122,12 +127,17 @@ async function insertProductPromotion(htmlContent, blogTopic) {
                         "prompt3": {
                             "type": "string",
                             "description": "The third detailed prompt to generate an image for the blog article starting by -generate an image ...-."
+                        },
+                        "prompt4": {
+                            "type": "string",
+                            "description": "The fourth detailed prompt to generate an image for the blog article starting by -generate an image ...-."
                         }
                     },
                     "required": [
                         "prompt1",
                         "prompt2",
-                        "prompt3"
+                        "prompt3",
+                        "prompt4"
                     ]
                 }
             }
@@ -152,57 +162,99 @@ async function insertProductPromotion(htmlContent, blogTopic) {
         for (const toolCall of toolCalls) {
             result_table = JSON.parse(toolCall.function.arguments);
             console.log(result_table);
-            const image1 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt1 });
+
+            const uploadImageToCloudinary = async (imageUrl) => {
+                const response = await axios({
+                    url: imageUrl,
+                    method: 'GET',
+                    responseType: 'arraybuffer'
+                });
+                const buffer = Buffer.from(response.data, 'binary');
+                
+                return new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { resource_type: 'image' },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+                    const bufferStream = new stream.PassThrough();
+                    bufferStream.end(buffer);
+                    bufferStream.pipe(uploadStream);
+                });
+            };
+
+            const image1 = await openai.images.generate({ model: "dall-e-3", prompt: `${result_table.prompt1} - DO NOT INCLUDE ANY TEXT` });
             const imageUrl1 = image1.data[0].url;
+            const cloudinaryUrl1 = await uploadImageToCloudinary(imageUrl1);
+            console.log(cloudinaryUrl1);
+            console.log(cloudinaryUrl1.url);
             products.push({
-                image: imageUrl1,
+                image: cloudinaryUrl1.url,
                 prompt: result_table.prompt1,
-                position: 'AFTER_OUTLINE'
+                position: 'TOP'
             });
-            const image2 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt2 });
+            const image2 = await openai.images.generate({ model: "dall-e-3", prompt: `${result_table.prompt2} - DO NOT INCLUDE ANY TEXT` });
             const imageUrl2 = image2.data[0].url;
+            const cloudinaryUrl2 = await uploadImageToCloudinary(imageUrl2);
+            console.log(cloudinaryUrl2.url);
             products.push({
-                image: imageUrl2,
+                image: cloudinaryUrl2.url,
                 prompt: result_table.prompt2,
-                position: 'MIDDLE'
+                position: 'MIDDLE1'
             });
-            const image3 = await openai.images.generate({ model: "dall-e-3", prompt: result_table.prompt3 });
+            const image3 = await openai.images.generate({ model: "dall-e-3", prompt: `${result_table.prompt3} - DO NOT INCLUDE ANY TEXT` });
             const imageUrl3 = image3.data[0].url;
+            const cloudinaryUrl3 = await uploadImageToCloudinary(imageUrl3);
+            console.log(cloudinaryUrl3.url);
             products.push({
-                image: imageUrl3,
+                image: cloudinaryUrl3.url,
                 prompt: result_table.prompt3,
+                position: 'MIDDLE2'
+            });
+            const image4 = await openai.images.generate({ model: "dall-e-3", prompt: `${result_table.prompt4} - DO NOT INCLUDE ANY TEXT` });
+            const imageUrl4 = image4.data[0].url;
+            const cloudinaryUrl4 = await uploadImageToCloudinary(imageUrl4);
+            console.log(cloudinaryUrl4.url);
+            products.push({
+                image: cloudinaryUrl4.url,
+                prompt: result_table.prompt4,
                 position: 'END'
             });
         }
     }
 
-    // Insert product promotions into the appropriate locations
-    products.forEach(product => {
+    // First, calculate the total number of <p> elements and how many sections we can divide them into
+    const pElements = document.querySelectorAll('p');
+    const totalPElements = pElements.length;
+
+    // Calculate how many images can be inserted based on the number of paragraphs
+    let sections;
+    if (totalPElements < 5) {
+        sections = 2; // If there are fewer than 5 <p> elements, insert 2 images
+    } else if (totalPElements < 8) {
+        sections = 3; // If there are between 5 and 7 <p> elements, insert 3 images
+    } else {
+        sections = 4; // If there are 8 or more <p> elements, insert 4 images
+    }
+
+    // Calculate where to insert images
+    const pPerSection = Math.floor(totalPElements / (sections + 1));
+
+    // Ensure we don't insert the same image in all positions
+    products.slice(0, sections).forEach((product, index) => {
         let productPrompt = product.prompt;
         let adjustedProductPrompt = productPrompt.replace('generate ', '');
         const clickableImage = `<img src="${product.image}" alt="${adjustedProductPrompt}" style="width:100%; height:auto;">`;
 
-        if (product.position === 'AFTER_OUTLINE') {
-            // Insert after the first <ul> element
-            const firstULElement = document.querySelector('p');
-            if (firstULElement) {
-                firstULElement.insertAdjacentHTML('afterend', clickableImage);
-            }
-        } else if (product.position === 'MIDDLE') {
-            // Insert after the middle <p> element
-            const pElements = document.querySelectorAll('p');
-            const middleIndex = Math.floor(pElements.length / 2);
-            if (pElements[middleIndex]) {
-                pElements[middleIndex].insertAdjacentHTML('afterend', clickableImage);
-            }
-        } else if (product.position === 'END') {
-            // Insert at the end of the article
-            const lastElement = document.body.lastElementChild;
-            if (lastElement) {
-                lastElement.insertAdjacentHTML('afterend', clickableImage);
-            }
+        // Find the position to insert the image
+        const insertAfterIndex = (index + 1) * pPerSection - 1;
+        if (insertAfterIndex < totalPElements && pElements[insertAfterIndex]) {
+            pElements[insertAfterIndex].insertAdjacentHTML('afterend', clickableImage);
         }
     });
+
 
     return document.documentElement.innerHTML;
 }
@@ -286,7 +338,7 @@ async function createArticleOnShopify(title, content) {
 async function isValidQuestion(isValid, userMessage, AIResponse) {
     console.log('isValid ', isValid);
     if (isValid == 'true') {
-        createArticleOnShopify(userMessage, AIResponse);
+        await createArticleOnShopify(userMessage, AIResponse);
     }
 }
 
@@ -377,8 +429,13 @@ app.post("/chat", (req, res) => {
                 responses.push(response);
             }
 
+            console.log(responses);
+
             // Return all the responses in an array
             res.json({ responses });
+
+            // Wait for 1 minute and 10 seconds before moving to the next line
+            await new Promise(resolve => setTimeout(resolve, 60 * 1000)); // 70 seconds
 
         } catch (error) {
             console.error('Error parsing or handling chat:', error.message);
